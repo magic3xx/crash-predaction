@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>>Death Dealers Predictor</title>
+    <title>Death Dealers Predictor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
@@ -184,7 +184,6 @@
     </div>
 
     <script>
-    // --- JAVASCRIPT WITH PERSISTENT REVEAL ---
     const predictorCircle = document.querySelector('.predictor-circle');
     const progressCircle = document.querySelector('.circle-progress');
     const crashPointDisplay = document.querySelector('.crash-point-display');
@@ -192,50 +191,37 @@
     const statusText = document.getElementById('status-text');
 
     /**
-     * Main function to start the reveal animation.
-     * The revealed number will now stay visible until this function is called again.
+     * Main function to start the animation and reveal the number INSTANTLY.
      * @param {number} crashPoint The crash point to be revealed.
      * @param {number} durationMs The duration of the countdown in milliseconds.
      */
     function revealCrashPoint(crashPoint, durationMs) {
-        if (predictorCircle.classList.contains('is-active')) return; // Prevent double-triggers
+        if (predictorCircle.classList.contains('is-active')) return;
 
-        // --- START OF FIX ---
+        // --- START OF THE FIX ---
 
-        // 1. RESET the previous state before starting the new one.
-        // If a number is currently revealed, start its fade-out transition.
-        if (crashPointDisplay.classList.contains('revealed')) {
-            crashPointDisplay.classList.remove('revealed');
-        }
+        // 1. REVEAL THE NUMBER IMMEDIATELY
+        statusText.textContent = "Fate Revealed!";
+        crashValueSpan.textContent = crashPoint.toFixed(2);
+        crashPointDisplay.classList.add('revealed'); // Fade in the number right away
 
-        // Use a short delay to allow the old number to fade out before we change the text and start the new spin.
-        const resetTransitionTime = 500; // This should match the transition time in the CSS
+        // 2. START THE COUNTDOWN ANIMATION
+        // The animation now serves as a visual timer for how long you have to bet.
+        document.documentElement.style.setProperty('--countdown-duration', `${durationMs / 1000}s`);
+        predictorCircle.classList.add('is-active');
+        progressCircle.classList.add('animating');
         
+        // 3. SET A TIMER to clean up AFTER the countdown finishes.
         setTimeout(() => {
-            // After the fade-out, reset the text to the placeholder
-            crashValueSpan.textContent = '---';
+            progressCircle.classList.remove('animating');
+            predictorCircle.classList.remove('is-active');
+            statusText.textContent = "Round in Progress...";
+        }, durationMs);
 
-            // 2. START the new countdown animation
-            statusText.textContent = "Foretelling...";
-            document.documentElement.style.setProperty('--countdown-duration', `${durationMs / 1000}s`);
-            predictorCircle.classList.add('is-active');
-            progressCircle.classList.add('animating');
+        // NOTE: We no longer reset the number. It will stay visible until the next
+        // 'next_crash_point' message arrives, which will then replace it.
 
-            // 3. SET A TIMER to reveal the new number when the countdown ends.
-            setTimeout(() => {
-                crashValueSpan.textContent = crashPoint.toFixed(2);
-                progressCircle.classList.remove('animating');
-                crashPointDisplay.classList.add('revealed'); // Fade in the new number
-                statusText.textContent = "Fate Revealed!";
-
-                // Mark the component as no longer "active" so a new round can start.
-                predictorCircle.classList.remove('is-active');
-            }, durationMs);
-
-        }, resetTransitionTime);
-
-        // NOTE: We have removed the old "resetDelay" timer completely.
-        // --- END OF FIX ---
+        // --- END OF THE FIX ---
     }
 
     function connectToServer() {
@@ -255,6 +241,8 @@
             if (message.type === 'next_crash_point') {
                 console.log('Received next crash point:', message.crashPoint);
                 const countdownMs = message.duration * 1000;
+                
+                // When a new round starts, call the function to display the new number
                 revealCrashPoint(message.crashPoint, countdownMs);
             }
         };
@@ -262,6 +250,9 @@
         ws.onclose = () => {
             console.log('Disconnected. Reconnecting...');
             statusText.textContent = "Reconnecting to the ether...";
+            // When disconnected, reset the UI to its initial state
+            crashPointDisplay.classList.remove('revealed');
+            crashValueSpan.textContent = '---';
             setTimeout(connectToServer, 3000);
         };
 
