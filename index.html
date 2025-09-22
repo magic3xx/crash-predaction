@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DARK & MAGIC Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Base Styling --- */
+        :root {
+            --dark-bg: #110e08;
+            --glow-color: #ffc400;
+            --shadow-color: #d4a317;
+            --border-color: rgba(255, 196, 0, 0.2);
+            --text-color: #f0e6d2;
+            --countdown-duration: 7s; 
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            font-family: 'Orbitron', sans-serif;
+            display: grid;
+            place-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem; /* Add some padding for smaller screens */
+            box-sizing: border-box;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        /* --- Main Predictor Container --- */
+        #crash-predictor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        #main-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--glow-color);
+            text-shadow: 0 0 5px var(--glow-color), 0 0 15px var(--shadow-color);
+        }
+
+        /* --- The Circle Element --- */
+        .predictor-circle {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(20, 15, 5, 0.8) 0%, var(--dark-bg) 70%);
+            display: grid;
+            place-content: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7), inset 0 0 15px rgba(0,0,0,0.9);
+            border: 2px solid var(--border-color);
+            transition: width 0.3s ease, height 0.3s ease; /* Smooth scaling */
+        }
+
+        /* --- The Animated Progress Spinner --- */
+        .circle-progress {
+            position: absolute;
+            top: -2px; 
+            left: -2px;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--glow-color) 0deg,
+                transparent 120deg
+            );
+            filter: drop-shadow(0 0 10px var(--glow-color)) drop-shadow(0 0 20px var(--shadow-color));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- Animation for the Spinner --- */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .circle-progress.animating {
+            opacity: 1;
+            animation: spin var(--countdown-duration) linear forwards;
+        }
+
+        /* --- Crash Point Number Display --- */
+        .crash-point-display {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .crash-point-display.revealed {
+            opacity: 1;
+            transform: scale(1);
+        }
+        #next-crash-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--text-color);
+            text-shadow: 0 0 15px var(--glow-color);
+            transition: font-size 0.3s ease; /* Smooth scaling */
+        }
+        .crash-point-display span:last-child {
+            font-size: 2rem;
+            color: var(--glow-color);
+            margin-left: 0.25rem;
+            transition: font-size 0.3s ease; /* Smooth scaling */
+        }
+        #predictor-label {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(240, 230, 210, 0.5);
+            transition: top 0.3s ease, font-size 0.3s ease; /* Smooth scaling */
+        }
+        #status-text {
+            color: rgba(255, 196, 0, 0.7);
+            font-size: 1.2rem;
+            min-height: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: font-size 0.3s ease; /* Smooth scaling */
+        }
+
+        /* --- START OF MOBILE VIEW STYLES --- */
+        @media (max-width: 600px) {
+            #main-title {
+                font-size: 1.8rem;
+                letter-spacing: 3px;
+            }
+
+            .predictor-circle {
+                width: 200px;
+                height: 200px;
+            }
+
+            #next-crash-value {
+                font-size: 2.8rem;
+            }
+
+            .crash-point-display span:last-child {
+                font-size: 1.5rem;
+            }
+
+            #predictor-label {
+                top: 50px;
+                font-size: 0.8rem;
+            }
+
+            #status-text {
+                font-size: 1rem;
+            }
+        }
+        /* --- END OF MOBILE VIEW STYLES --- */
+
+    </style>
+</head>
+<body>
+
+    <div id="crash-predictor">
+        <h1 id="main-title">Death Dealers</h1>
+        <h2 id="status-text">Connecting to the Server...</h2>
+        <div class="predictor-circle">
+            <div class="circle-progress"></div>
+            <div class="crash-point-display">
+                <span id="predictor-label">Number</span>
+                <span id="next-crash-value">---</span><span>x</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- JAVASCRIPT WITH PERSISTENT REVEAL ---
+    const predictorCircle = document.querySelector('.predictor-circle');
+    const progressCircle = document.querySelector('.circle-progress');
+    const crashPointDisplay = document.querySelector('.crash-point-display');
+    const crashValueSpan = document.getElementById('next-crash-value');
+    const statusText = document.getElementById('status-text');
+
+    /**
+     * Main function to start the reveal animation.
+     * The revealed number will now stay visible until this function is called again.
+     * @param {number} crashPoint The crash point to be revealed.
+     * @param {number} durationMs The duration of the countdown in milliseconds.
+     */
+    function revealCrashPoint(crashPoint, durationMs) {
+        if (predictorCircle.classList.contains('is-active')) return; // Prevent double-triggers
+
+        // --- START OF FIX ---
+
+        // 1. RESET the previous state before starting the new one.
+        // If a number is currently revealed, start its fade-out transition.
+        if (crashPointDisplay.classList.contains('revealed')) {
+            crashPointDisplay.classList.remove('revealed');
+        }
+
+        // Use a short delay to allow the old number to fade out before we change the text and start the new spin.
+        const resetTransitionTime = 500; // This should match the transition time in the CSS
+        
+        setTimeout(() => {
+            // After the fade-out, reset the text to the placeholder
+            crashValueSpan.textContent = '---';
+
+            // 2. START the new countdown animation
+            statusText.textContent = "Foretelling...";
+            document.documentElement.style.setProperty('--countdown-duration', `${durationMs / 1000}s`);
+            predictorCircle.classList.add('is-active');
+            progressCircle.classList.add('animating');
+
+            // 3. SET A TIMER to reveal the new number when the countdown ends.
+            setTimeout(() => {
+                crashValueSpan.textContent = crashPoint.toFixed(2);
+                progressCircle.classList.remove('animating');
+                crashPointDisplay.classList.add('revealed'); // Fade in the new number
+                statusText.textContent = "Fate Revealed!";
+
+                // Mark the component as no longer "active" so a new round can start.
+                predictorCircle.classList.remove('is-active');
+            }, durationMs);
+
+        }, resetTransitionTime);
+
+        // NOTE: We have removed the old "resetDelay" timer completely.
+        // --- END OF FIX ---
+    }
+
+    function connectToServer() {
+        const SERVER_URL = 'crash-game-server-production-4deb.up.railway.app';
+        const wsUrl = `wss://${SERVER_URL}/predictor`; 
+
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            console.log('Connected to server as predictor.');
+            statusText.textContent = "Awaiting the next vision...";
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            
+            if (message.type === 'next_crash_point') {
+                console.log('Received next crash point:', message.crashPoint);
+                const countdownMs = message.duration * 1000;
+                revealCrashPoint(message.crashPoint, countdownMs);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected. Reconnecting...');
+            statusText.textContent = "Reconnecting to the ether...";
+            setTimeout(connectToServer, 3000);
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            ws.close();
+        };
+    }
+
+    // Start the connection
+    connectToServer();
+</script>
+</body>
+</html>
